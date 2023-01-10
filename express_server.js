@@ -26,8 +26,8 @@ app.get("/urls.json", (req, res) => {
 
 app.post("/urls", (req, res) => {
   const newUrls = { id: generateRandomString(), longURL: req.body.longURL };
-  // console.log(newUrls); // Log the POST request body to the console
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  urlDatabase[newUrls.id] = newUrls.longURL;
+  res.redirect('/urls/' + newUrls.id);
 });
 
 app.get("/urls", (req, res) => {
@@ -44,11 +44,16 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+app.get("/u/:id", (req, res) => {
+  const longURL = urlDatabase[req.params.id];
+  console.log(longURL);
+  res.redirect(longURL);
+});
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
 const generateRandomString = () => {
   return Math.random().toString(36).substring(2, 8);
-  // return Array.from(Array(6), () => Math.floor(Math.random() * 36).toString(36)).join('');
 };

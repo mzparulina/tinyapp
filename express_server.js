@@ -77,10 +77,15 @@ app.post("/register", (req, res) => {
 
 app.get("/register", (req, res) => {
   const user = req.user;
-  const templateVars = {
-    user: user,
-  };
-  res.render('urls_register', templateVars);
+  if (user) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = {
+      user: user,
+    };
+    console.log(user);
+    res.render('urls_register', templateVars);
+  }
 });
 
 //==============================
@@ -102,11 +107,15 @@ app.post('/login', (req, res) => {
 
 app.get("/login", (req, res) => {
   const user = req.user;
-  const templateVars = {
-    user: user,
-  };
+  if (user) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = {
+      user: user,
+    };
 
-  res.render('urls_login', templateVars);
+    res.render('urls_login', templateVars);
+  }
 });
 
 app.post('/logout', (req, res) => {
@@ -119,9 +128,14 @@ app.post('/logout', (req, res) => {
 // URLS
 //==============================
 app.post("/urls", (req, res) => {
-  const newUrls = { id: generateRandomString(8), longURL: req.body.longURL };
-  urlDatabase[newUrls.id] = newUrls.longURL;
-  res.redirect('/urls/' + newUrls.id);
+  const user = req.user;
+  if (user) {
+    const newUrls = { id: generateRandomString(8), longURL: req.body.longURL };
+    urlDatabase[newUrls.id] = newUrls.longURL;
+    res.redirect('/urls/' + newUrls.id);
+  } else {
+    res.status(403).send('You need to login');
+  }
 });
 
 app.get("/urls", (req, res) => {
@@ -146,27 +160,38 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   const user = req.user;
+  if (!user) {
+    res.redirect('/login');
+  } else {
+    const templateVars = {
+      user: user,
+    };
 
-  const templateVars = {
-    user: user,
-  };
-
-  res.render("urls_new", templateVars);
+    res.render("urls_new", templateVars);
+  }
 });
 
 app.get("/urls/:id", (req, res) => {
   const user = req.user;
-  const templateVars = {
-    id: req.params.id,
-    longURL:urlDatabase[req.params.id],
-    user: user
-  };
-  res.render("urls_show", templateVars);
+  if (user) {
+    const templateVars = {
+      id: req.params.id,
+      longURL:urlDatabase[req.params.id],
+      user: user
+    };
+    res.render("urls_show", templateVars);
+  } else {
+    res.status(404).send('Url does not exist');
+  }
 });
 
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
-  res.redirect(longURL);
+  const url = urlDatabase[req.params.id];
+  if (url) {
+    res.redirect(url);
+  } else {
+    res.status(404).send('Url does not exist');
+  }
 });
 
 app.listen(PORT, () => {

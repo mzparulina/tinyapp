@@ -1,5 +1,5 @@
 const express = require("express");
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = 8080; // default port 8080
@@ -37,8 +37,21 @@ app.use((req, res, next) => {
   next();
 });
 
+app.get("/", (req, res) => {
+  res.redirect('/login');
+});
+
+app.get("/hello", (req, res) => {
+  const templateVars = { greeting: "Hello World!" };
+  res.render("hello_world", templateVars);
+});
+
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
 //==============================
-// POST METHODS
+// Register
 //==============================
 
 app.post("/register", (req, res) => {
@@ -62,6 +75,18 @@ app.post("/register", (req, res) => {
   }
 });
 
+app.get("/register", (req, res) => {
+  const user = req.user;
+  const templateVars = {
+    user: user,
+  };
+  res.render('urls_register', templateVars);
+});
+
+//==============================
+// Login and Logut
+//==============================
+
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -75,33 +100,28 @@ app.post('/login', (req, res) => {
   }
 });
 
+app.get("/login", (req, res) => {
+  const user = req.user;
+  const templateVars = {
+    user: user,
+  };
+
+  res.render('urls_login', templateVars);
+});
+
 app.post('/logout', (req, res) => {
   res.clearCookie(userIdCookie);
   delete users[userIdCookie];
-  res.redirect('/urls');
+  res.redirect('/login');
 });
 
+//==============================
+// URLS
+//==============================
 app.post("/urls", (req, res) => {
   const newUrls = { id: generateRandomString(8), longURL: req.body.longURL };
   urlDatabase[newUrls.id] = newUrls.longURL;
   res.redirect('/urls/' + newUrls.id);
-});
-
-app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.longURL;
-  res.redirect('/urls');
-});
-
-app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect('/urls');
-});
-
-//==============================
-// GET METHODS
-//==============================
-app.get("/", (req, res) => {
-  res.redirect('/urls');
 });
 
 app.get("/urls", (req, res) => {
@@ -114,30 +134,14 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-app.get("/hello", (req, res) => {
-  const templateVars = { greeting: "Hello World!" };
-  res.render("hello_world", templateVars);
+app.post("/urls/:id", (req, res) => {
+  urlDatabase[req.params.id] = req.body.longURL;
+  res.redirect('/urls');
 });
 
-app.get("/register", (req, res) => {
-  const user = req.user;
-  const templateVars = {
-    user: user,
-  };
-  res.render('urls_register', templateVars);
-});
-
-app.get("/login", (req, res) => {
-  const user = req.user;
-  const templateVars = {
-    user: user,
-  };
-
-  res.render('urls_login', templateVars);
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
+app.post("/urls/:id/delete", (req, res) => {
+  delete urlDatabase[req.params.id];
+  res.redirect('/urls');
 });
 
 app.get("/urls/new", (req, res) => {

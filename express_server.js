@@ -7,8 +7,14 @@ const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "userRandomID",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "userRandomID",
+  },
 };
 
 const users = {
@@ -83,7 +89,6 @@ app.get("/register", (req, res) => {
     const templateVars = {
       user: user,
     };
-    console.log(user);
     res.render('urls_register', templateVars);
   }
 });
@@ -130,9 +135,13 @@ app.post('/logout', (req, res) => {
 app.post("/urls", (req, res) => {
   const user = req.user;
   if (user) {
-    const newUrls = { id: generateRandomString(8), longURL: req.body.longURL };
-    urlDatabase[newUrls.id] = newUrls.longURL;
-    res.redirect('/urls/' + newUrls.id);
+    const newUrls = {
+      id: generateRandomString(8),
+      longURL: req.body.longURL,
+      userID: user.id
+    };
+    urlDatabase[newUrls.id] = newUrls;
+    res.redirect('/urls');
   } else {
     res.status(403).send('You need to login');
   }
@@ -140,22 +149,45 @@ app.post("/urls", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const user = req.user;
-  const templateVars = {
-    urls: urlDatabase,
-    user: user,
-  };
+  if (user) {
+    const templateVars = {
+      urls: urlsForUser(user.id),
+      user: user,
+    };
+    console.log(templateVars.urls)
 
-  res.render("urls_index", templateVars);
+    res.render("urls_index", templateVars);
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.longURL;
-  res.redirect('/urls');
+  const user = req.user;
+  if (user) {
+    if (urlDatabase[req.params.id]) {
+      urlDatabase[req.params.id].longURL = req.body.longURL;
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('URL Does not Exist');
+    }
+  } else {
+    res.status(403).send('Please Login');
+  }
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect('/urls');
+  const user = req.user;
+  if (user) {
+    if (urlDatabase[req.params.id]) {
+      delete urlDatabase[req.params.id];
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('URL Does not Exist');
+    }
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get("/urls/new", (req, res) => {
@@ -176,7 +208,7 @@ app.get("/urls/:id", (req, res) => {
   if (user) {
     const templateVars = {
       id: req.params.id,
-      longURL:urlDatabase[req.params.id],
+      longURL:urlDatabase[req.params.id].longURL,
       user: user
     };
     res.render("urls_show", templateVars);
@@ -207,9 +239,23 @@ const getUserDetails = (id) => {
 };
 
 const getUserEmail = (val) => {
+  return valueFinder(users, 'email', val);
+};
+
+const urlsForUser = (val) => {
+  const userUrls = {};
+  for (const key in urlDatabase) {
+    if (urlDatabase[key].userID === val) {
+      userUrls[key] = urlDatabase[key];
+    }
+  }
+  return userUrls;
+};
+
+const valueFinder = (obj, key, val) => {
   let foundObj;
-  JSON.stringify(users, (_, nestedValue) => {
-    if (nestedValue && nestedValue['email'] === val) {
+  JSON.stringify(obj, (_, nestedValue) => {
+    if (nestedValue && nestedValue[key] === val) {
       foundObj = nestedValue;
     }
     return nestedValue;

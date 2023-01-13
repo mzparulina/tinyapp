@@ -1,6 +1,7 @@
 const express = require("express");
-const cookieParser = require('cookie-parser');
+// const cookieParser = require('cookie-parser');
 const bcrypt = require("bcryptjs");
+const cookieSession = require('cookie-session');
 
 const app = express();
 const PORT = 8080; // default port 8080
@@ -34,10 +35,16 @@ const users = {
 const userIdCookie = 'user_id';
 
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['lhl', 'pmr', 'nov14'],
+
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 
 app.use((req, res, next) => {
-  const user = getUserDetails(req.cookies[userIdCookie]);
+  const user = getUserDetails(req.session[userIdCookie]);
   if (user) {
     req.user = user;
   }
@@ -77,7 +84,7 @@ app.post("/register", (req, res) => {
     };
 
     users[user.id] = user;
-    res.cookie(userIdCookie, user.id);
+    req.session[userIdCookie] = user.id;
     res.redirect('/urls');
   }
 });
@@ -104,7 +111,7 @@ app.post('/login', (req, res) => {
   const user = getUserEmail(email);
   if (user && bcrypt.compareSync(password, user.password)) {
     console.log('login');
-    res.cookie(userIdCookie, user.id);
+    req.session[userIdCookie] = user.id;
     res.redirect('/urls');
   } else {
     res.status(403).send('Invalid login');
@@ -125,8 +132,7 @@ app.get("/login", (req, res) => {
 });
 
 app.post('/logout', (req, res) => {
-  res.clearCookie(userIdCookie);
-  delete users[userIdCookie];
+  req.session = null;
   res.redirect('/login');
 });
 

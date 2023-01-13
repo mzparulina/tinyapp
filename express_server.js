@@ -31,7 +31,6 @@ app.use(cookieParser());
 
 app.use((req, res, next) => {
   const user = getUserDetails(req.cookies[userIdCookie]);
-  console.log(users);
   if (user) {
     req.user = user;
   }
@@ -41,10 +40,34 @@ app.use((req, res, next) => {
 //==============================
 // POST METHODS
 //==============================
+
+app.post("/register", (req, res) => {
+  
+  const email = req.body.email;
+  const password = req.body.password;
+  if (email === '' || password === '') {
+    res.sendStatus(400);
+  } else if (getUserEmail(email)) {
+    res.status(400).send('Email registered');
+  } else {
+    const user = {
+      id: generateRandomString(6),
+      email: email,
+      password: password,
+    };
+
+    users[user.id] = user;
+    res.cookie(userIdCookie, user.id);
+    res.redirect('/urls');
+  }
+});
+
 app.post('/login', (req, res) => {
-  const username = req.body.username;
-  const user = getUserDetails(username);
-  if (user) {
+  const email = req.body.email;
+  const password = req.body.password;
+  const user = getUserEmail(email);
+  if (user && user.password === password) {
+    console.log('login');
     res.cookie(userIdCookie, user.id);
     res.redirect('/urls');
   } else {
@@ -74,27 +97,6 @@ app.post("/urls/:id/delete", (req, res) => {
   res.redirect('/urls');
 });
 
-app.post("/register", (req, res) => {
-  
-  const email = req.body.email;
-  const password = req.body.password;
-  if (email === '' || password === '') {
-    res.sendStatus(400);
-  } else if (getUserEmail(email)) {
-    res.status(400).send('Email registered');
-  } else {
-    const user = {
-      id: generateRandomString(6),
-      email: email,
-      password: password,
-    };
-
-    users[user.id] = user;
-    console.log(users);
-    res.cookie(userIdCookie, user.id);
-    res.redirect('/urls');
-  }
-});
 //==============================
 // GET METHODS
 //==============================
@@ -123,6 +125,15 @@ app.get("/register", (req, res) => {
     user: user,
   };
   res.render('urls_register', templateVars);
+});
+
+app.get("/login", (req, res) => {
+  const user = req.user;
+  const templateVars = {
+    user: user,
+  };
+
+  res.render('urls_login', templateVars);
 });
 
 app.get("/urls.json", (req, res) => {
@@ -175,4 +186,4 @@ const getUserEmail = (val) => {
     return nestedValue;
   });
   return foundObj;
-}
+};

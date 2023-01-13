@@ -75,11 +75,13 @@ app.post("/urls/:id/delete", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
+  
   const email = req.body.email;
   const password = req.body.password;
-
   if (email === '' || password === '') {
     res.sendStatus(400);
+  } else if (getUserEmail(email)) {
+    res.status(400).send('Email registered');
   } else {
     const user = {
       id: generateRandomString(6),
@@ -163,3 +165,14 @@ const generateRandomString = (len) => {
 const getUserDetails = (id) => {
   return users[id];
 };
+
+const getUserEmail = (val) => {
+  let foundObj;
+  JSON.stringify(users, (_, nestedValue) => {
+    if (nestedValue && nestedValue['email'] === val) {
+      foundObj = nestedValue;
+    }
+    return nestedValue;
+  });
+  return foundObj;
+}

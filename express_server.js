@@ -1,11 +1,15 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const cookieSession = require('cookie-session');
+const methodOverride = require('method-override');
 const {
+  getLongURL,
   getUser,
   getUserByEmail,
   urlsForUser,
-  generateRandomString
+  generateRandomString,
+  isUserUrl,
+  isValidUrl,
 } = require('./helpers');
 
 const app = express();
@@ -38,7 +42,7 @@ const users = {
 };
 
 const userIdCookie = 'user_id';
-
+app.use(methodOverride('_method'));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieSession({
   name: 'session',
@@ -146,14 +150,20 @@ app.post('/logout', (req, res) => {
 //==============================
 app.post("/urls", (req, res) => {
   const user = req.user;
+  const longURL = req.body.longURL;
+
   if (user) {
-    const newUrls = {
-      id: generateRandomString(8),
-      longURL: req.body.longURL,
-      userID: user.id
-    };
-    urlDatabase[newUrls.id] = newUrls;
-    res.redirect('/urls');
+    if (!getLongURL(longURL, urlDatabase)) {
+      const newUrls = {
+        id: generateRandomString(8),
+        longURL: longURL,
+        userID: user.id
+      };
+      urlDatabase[newUrls.id] = newUrls;
+      res.redirect('/urls');
+    } else {
+      res.status(403).send('Url exists');
+    }
   } else {
     res.status(403).send('You need to login');
   }
@@ -172,12 +182,28 @@ app.get("/urls", (req, res) => {
   }
 });
 
-app.post("/urls/:id", (req, res) => {
+app.put("/urls/:id", (req, res) => {
   const user = req.user;
+  const url = req.params.id;
+  const longURL = req.body.longURL;
+
   if (user) {
-    if (urlDatabase[req.params.id]) {
-      urlDatabase[req.params.id].longURL = req.body.longURL;
-      res.redirect('/urls');
+    if (!isUserUrl(url, user, urlDatabase)) {
+      if (!getLongURL(longURL, urlDatabase)) {
+        urlDatabase[url] =  {
+          longURL: longURL,
+          userID: user.id,
+        };
+
+        const templateVars = {
+          urls: urlsForUser(user.id, urlDatabase),
+          user: user,
+        };
+        
+        res.render('urls_index', templateVars);
+      } else {
+        res.status(404).send('URL Exists');
+      }
     } else {
       res.status(403).send('URL Does not Exist');
     }
@@ -186,7 +212,7 @@ app.post("/urls/:id", (req, res) => {
   }
 });
 
-app.post("/urls/:id/delete", (req, res) => {
+app.delete("/urls/:id", (req, res) => {
   const user = req.user;
   if (user) {
     if (urlDatabase[req.params.id]) {
@@ -215,13 +241,20 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   const user = req.user;
+  const url = req.params.id;
   if (user) {
-    const templateVars = {
-      id: req.params.id,
-      longURL:urlDatabase[req.params.id].longURL,
-      user: user
-    };
-    res.render("urls_show", templateVars);
+    if (!isValidUrl(url, urlDatabase)) {
+      res.status(400).send('Invalid URL.');
+    } else if (isUserUrl(url, user, urlDatabase)) {
+      res.sendStatus(403);
+    } else {
+      const templateVars = {
+        id: req.params.id,
+        longURL:urlDatabase[url].longURL,
+        user: user
+      };
+      res.render("urls_show", templateVars);
+    }
   } else {
     res.status(404).send('Url does not exist');
   }

@@ -3,9 +3,17 @@ const getUser = (id, users) => {
 };
 
 const getUserByEmail = (val, users) => {
+  return objecValueFinder(users, 'email', val);
+};
+
+const getLongURL = (val, urlDatabase) => {
+  return objecValueFinder(urlDatabase, 'longURL', val);
+};
+
+const objecValueFinder = (obj, key, val) => {
   let foundObj;
-  JSON.stringify(users, (_, nestedValue) => {
-    if (nestedValue && nestedValue['email'] === val) {
+  JSON.stringify(obj, (_, nestedValue) => {
+    if (nestedValue && nestedValue[key] === val) {
       foundObj = nestedValue;
     }
     return nestedValue;
@@ -23,16 +31,31 @@ const urlsForUser = (val, urlDatabase) => {
   return userUrls;
 };
 
+const isValidUrl = (url, urlDatabase) => {
+  if (urlDatabase[url]) {
+    return true;
+  }
+  return false;
+};
+
+const isUserUrl = (shortUrl, user, urlDatabase) => {
+  if (isValidUrl(shortUrl, urlDatabase) && urlDatabase[shortUrl].userId === user.id) {
+    return true;
+  }
+  return false;
+};
+
 const generateRandomString = (len) => {
   return Math.random().toString(36).substring(2, len);
 };
 
 module.exports = {
   // isRegisteredEmail,
+  getLongURL,
   getUser,
   getUserByEmail,
   urlsForUser,
-  // isUserUrl,
-  // isValidUrl,
+  isUserUrl,
+  isValidUrl,
   generateRandomString
 };

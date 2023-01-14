@@ -1,7 +1,12 @@
 const express = require("express");
-// const cookieParser = require('cookie-parser');
 const bcrypt = require("bcryptjs");
 const cookieSession = require('cookie-session');
+const {
+  getUser,
+  getUserByEmail,
+  urlsForUser,
+  generateRandomString
+} = require('./helpers');
 
 const app = express();
 const PORT = 8080; // default port 8080
@@ -44,7 +49,7 @@ app.use(cookieSession({
 }));
 
 app.use((req, res, next) => {
-  const user = getUserDetails(req.session[userIdCookie]);
+  const user = getUser(req.session[userIdCookie], users);
   if (user) {
     req.user = user;
   }
@@ -74,7 +79,7 @@ app.post("/register", (req, res) => {
   const password = req.body.password;
   if (email === '' || password === '') {
     res.sendStatus(400);
-  } else if (getUserEmail(email)) {
+  } else if (getUserByEmail(email), users) {
     res.status(400).send('Email registered');
   } else {
     const user = {
@@ -108,7 +113,7 @@ app.get("/register", (req, res) => {
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const user = getUserEmail(email);
+  const user = getUserByEmail(email, users);
   if (user && bcrypt.compareSync(password, user.password)) {
     console.log('login');
     req.session[userIdCookie] = user.id;
@@ -158,7 +163,7 @@ app.get("/urls", (req, res) => {
   const user = req.user;
   if (user) {
     const templateVars = {
-      urls: urlsForUser(user.id),
+      urls: urlsForUser(user.id, urlDatabase),
       user: user,
     };
     res.render("urls_index", templateVars);
@@ -234,36 +239,3 @@ app.get("/u/:id", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Tiny app listening on port ${PORT}!`);
 });
-
-const generateRandomString = (len) => {
-  return Math.random().toString(36).substring(2, len);
-};
-
-const getUserDetails = (id) => {
-  return users[id];
-};
-
-const getUserEmail = (val) => {
-  return valueFinder(users, 'email', val);
-};
-
-const urlsForUser = (val) => {
-  const userUrls = {};
-  for (const key in urlDatabase) {
-    if (urlDatabase[key].userID === val) {
-      userUrls[key] = urlDatabase[key];
-    }
-  }
-  return userUrls;
-};
-
-const valueFinder = (obj, key, val) => {
-  let foundObj;
-  JSON.stringify(obj, (_, nestedValue) => {
-    if (nestedValue && nestedValue[key] === val) {
-      foundObj = nestedValue;
-    }
-    return nestedValue;
-  });
-  return foundObj;
-};

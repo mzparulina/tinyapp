@@ -76,11 +76,11 @@ app.get("/urls.json", (req, res) => {
 //==============================
 // Register
 //==============================
-
+// === POST /register ===
 app.post("/register", (req, res) => {
-  
   const email = req.body.email;
   const password = req.body.password;
+
   if (email === '' || password === '') {
     res.sendStatus(400);
   } else if (getUserByEmail(email), users) {
@@ -91,13 +91,12 @@ app.post("/register", (req, res) => {
       email: email,
       password: bcrypt.hashSync(password, 10),
     };
-
     users[user.id] = user;
     req.session[userIdCookie] = user.id;
     res.redirect('/urls');
   }
 });
-
+// === GET /register ===
 app.get("/register", (req, res) => {
   const user = req.user;
   if (user) {
@@ -114,19 +113,19 @@ app.get("/register", (req, res) => {
 // Login and Logut
 //==============================
 
+// === POST /login ===
 app.post('/login', (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const user = getUserByEmail(email, users);
   if (user && bcrypt.compareSync(password, user.password)) {
-    console.log('login');
     req.session[userIdCookie] = user.id;
     res.redirect('/urls');
   } else {
     res.status(403).send('Invalid login');
   }
 });
-
+// === GET /login ===
 app.get("/login", (req, res) => {
   const user = req.user;
   if (user) {
@@ -139,7 +138,7 @@ app.get("/login", (req, res) => {
     res.render('urls_login', templateVars);
   }
 });
-
+// === POST /logout ===
 app.post('/logout', (req, res) => {
   req.session = null;
   res.redirect('/login');
@@ -148,6 +147,8 @@ app.post('/logout', (req, res) => {
 //==============================
 // URLS
 //==============================
+
+// === CREATE /urls ===
 app.post("/urls", (req, res) => {
   const user = req.user;
   const longURL = req.body.longURL;
@@ -168,20 +169,7 @@ app.post("/urls", (req, res) => {
     res.status(403).send('You need to login');
   }
 });
-
-app.get("/urls", (req, res) => {
-  const user = req.user;
-  if (user) {
-    const templateVars = {
-      urls: urlsForUser(user.id, urlDatabase),
-      user: user,
-    };
-    res.render("urls_index", templateVars);
-  } else {
-    res.redirect('/login');
-  }
-});
-
+// === UPDATE /urls/:shorturl ===
 app.put("/urls/:id", (req, res) => {
   const user = req.user;
   const url = req.params.id;
@@ -194,7 +182,6 @@ app.put("/urls/:id", (req, res) => {
           longURL: longURL,
           userID: user.id,
         };
-
         const templateVars = {
           urls: urlsForUser(user.id, urlDatabase),
           user: user,
@@ -211,7 +198,7 @@ app.put("/urls/:id", (req, res) => {
     res.status(403).send('Please Login');
   }
 });
-
+// === DELETE /urls/shorturl ===
 app.delete("/urls/:id", (req, res) => {
   const user = req.user;
   if (user) {
@@ -225,7 +212,20 @@ app.delete("/urls/:id", (req, res) => {
     res.redirect('/login');
   }
 });
-
+// === GET /urls ===
+app.get("/urls", (req, res) => {
+  const user = req.user;
+  if (user) {
+    const templateVars = {
+      urls: urlsForUser(user.id, urlDatabase),
+      user: user,
+    };
+    res.render("urls_index", templateVars);
+  } else {
+    res.redirect('/login');
+  }
+});
+// === GET /urls/new ===
 app.get("/urls/new", (req, res) => {
   const user = req.user;
   if (!user) {
@@ -234,11 +234,10 @@ app.get("/urls/new", (req, res) => {
     const templateVars = {
       user: user,
     };
-
     res.render("urls_new", templateVars);
   }
 });
-
+// === GET /urls/shorturl ===
 app.get("/urls/:id", (req, res) => {
   const user = req.user;
   const url = req.params.id;
@@ -259,7 +258,7 @@ app.get("/urls/:id", (req, res) => {
     res.status(404).send('Url does not exist');
   }
 });
-
+// === GET /u/shorturl ===
 app.get("/u/:id", (req, res) => {
   const url = urlDatabase[req.params.id];
   if (url) {

@@ -2,6 +2,8 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const cookieSession = require('cookie-session');
 const methodOverride = require('method-override');
+const urlDatabase = require('./data/urls.json');
+
 const {
   getLongURL,
   getUser,
@@ -17,17 +19,6 @@ const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
 
-const urlDatabase = {
-  b6UTxQ: {
-    longURL: "https://www.tsn.ca",
-    userID: "userRandomID",
-  },
-  i3BoGr: {
-    longURL: "https://www.google.ca",
-    userID: "userRandomID",
-  },
-};
-
 const users = {
   userRandomID: {
     id: "userRandomID",
@@ -41,7 +32,7 @@ const users = {
   },
 };
 
-const userIdCookie = 'user_id';
+const USERIDCOOKIE = 'user_id';
 app.use(methodOverride('_method'));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieSession({
@@ -53,7 +44,7 @@ app.use(cookieSession({
 }));
 
 app.use((req, res, next) => {
-  const user = getUser(req.session[userIdCookie], users);
+  const user = getUser(req.session[USERIDCOOKIE], users);
   if (user) {
     req.user = user;
   }
@@ -61,87 +52,17 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (req, res) => {
-  res.redirect('/login');
-});
-
-app.get("/hello", (req, res) => {
-  const templateVars = { greeting: "Hello World!" };
-  res.render("hello_world", templateVars);
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-//==============================
-// Register
-//==============================
-// === POST /register ===
-app.post("/register", (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
-
-  if (email === '' || password === '') {
-    res.sendStatus(400);
-  } else if (getUserByEmail(email), users) {
-    res.status(400).send('Email registered');
-  } else {
-    const user = {
-      id: generateRandomString(6),
-      email: email,
-      password: bcrypt.hashSync(password, 10),
-    };
-    users[user.id] = user;
-    req.session[userIdCookie] = user.id;
-    res.redirect('/urls');
-  }
-});
-// === GET /register ===
-app.get("/register", (req, res) => {
   const user = req.user;
+  console.log(user)
   if (user) {
-    res.redirect('/urls');
-  } else {
     const templateVars = {
+      urls: urlsForUser(user.id, urlDatabase),
       user: user,
     };
-    res.render('urls_register', templateVars);
-  }
-});
-
-//==============================
-// Login and Logut
-//==============================
-
-// === POST /login ===
-app.post('/login', (req, res) => {
-  const email = req.body.email;
-  const password = req.body.password;
-  const user = getUserByEmail(email, users);
-  if (user && bcrypt.compareSync(password, user.password)) {
-    req.session[userIdCookie] = user.id;
-    res.redirect('/urls');
+    res.render("urls_index", templateVars);
   } else {
-    res.status(403).send('Invalid login');
+    res.redirect('/login');
   }
-});
-// === GET /login ===
-app.get("/login", (req, res) => {
-  const user = req.user;
-  if (user) {
-    res.redirect('/urls');
-  } else {
-    const templateVars = {
-      user: user,
-    };
-
-    res.render('urls_login', templateVars);
-  }
-});
-// === POST /logout ===
-app.post('/logout', (req, res) => {
-  req.session = null;
-  res.redirect('/login');
 });
 
 //==============================
@@ -163,12 +84,13 @@ app.post("/urls", (req, res) => {
       urlDatabase[newUrls.id] = newUrls;
       res.redirect('/urls');
     } else {
-      res.status(403).send('Url exists');
+      res.status(404).send('Url exists');
     }
   } else {
-    res.status(403).send('You need to login');
+    res.status(401).send('You need to login');
   }
 });
+
 // === UPDATE /urls/:shorturl ===
 app.put("/urls/:id", (req, res) => {
   const user = req.user;
@@ -192,12 +114,13 @@ app.put("/urls/:id", (req, res) => {
         res.status(404).send('URL Exists');
       }
     } else {
-      res.status(403).send('URL Does not Exist');
+      res.status(401).send('Unathorized');
     }
   } else {
-    res.status(403).send('Please Login');
+    res.status(401).send('Please Login');
   }
 });
+
 // === DELETE /urls/shorturl ===
 app.delete("/urls/:id", (req, res) => {
   const user = req.user;
@@ -212,6 +135,7 @@ app.delete("/urls/:id", (req, res) => {
     res.redirect('/login');
   }
 });
+
 // === GET /urls ===
 app.get("/urls", (req, res) => {
   const user = req.user;
@@ -225,6 +149,7 @@ app.get("/urls", (req, res) => {
     res.redirect('/login');
   }
 });
+
 // === GET /urls/new ===
 app.get("/urls/new", (req, res) => {
   const user = req.user;
@@ -237,15 +162,16 @@ app.get("/urls/new", (req, res) => {
     res.render("urls_new", templateVars);
   }
 });
+
 // === GET /urls/shorturl ===
 app.get("/urls/:id", (req, res) => {
   const user = req.user;
   const url = req.params.id;
   if (user) {
     if (!isValidUrl(url, urlDatabase)) {
-      res.status(400).send('Invalid URL.');
+      res.status(404).send('Invalid URL.');
     } else if (isUserUrl(url, user, urlDatabase)) {
-      res.sendStatus(403);
+      res.sendStatus(401);
     } else {
       const templateVars = {
         id: req.params.id,
@@ -255,17 +181,93 @@ app.get("/urls/:id", (req, res) => {
       res.render("urls_show", templateVars);
     }
   } else {
-    res.status(404).send('Url does not exist');
+    res.status(401).send('Unathorized');
   }
 });
+
 // === GET /u/shorturl ===
 app.get("/u/:id", (req, res) => {
   const url = urlDatabase[req.params.id];
   if (url) {
-    res.redirect(url);
+    res.redirect(url.longURL);
   } else {
     res.status(404).send('Url does not exist');
   }
+});
+
+//==============================
+// Register
+//==============================
+
+// === POST /register ===
+app.post("/register", (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+
+  if (email === '' || password === '') {
+    res.sendStatus(400);
+  } else if (getUserByEmail(email, users)) {
+    res.status(404).send('Email registered');
+  } else {
+    const user = {
+      id: generateRandomString(6),
+      email: email,
+      password: bcrypt.hashSync(password, 10),
+    };
+    users[user.id] = user;
+    req.session[USERIDCOOKIE] = user.id;
+    res.redirect('/urls');
+  }
+});
+
+// === GET /register ===
+app.get("/register", (req, res) => {
+  const user = req.user;
+  if (user) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = {
+      user: user,
+    };
+    res.render('urls_register', templateVars);
+  }
+});
+
+//==============================
+// Login and Logut
+//==============================
+
+// === POST /login ===
+app.post('/login', (req, res) => {
+  const email = req.body.email;
+  const password = req.body.password;
+  const user =  getUserByEmail(email, users);
+  if (user && bcrypt.compareSync(password, user.password)) {
+    req.session[USERIDCOOKIE] = user.id;
+    res.redirect('/urls');
+  } else {
+    res.status(401).send('Invalid login');
+  }
+});
+
+// === GET /login ===
+app.get("/login", (req, res) => {
+  const user = req.user;
+  if (user) {
+    res.redirect('/urls');
+  } else {
+    const templateVars = {
+      user: user,
+    };
+
+    res.render('urls_login', templateVars);
+  }
+});
+
+// === POST /logout ===
+app.post('/logout', (req, res) => {
+  req.session = null;
+  res.redirect('/login');
 });
 
 app.listen(PORT, () => {

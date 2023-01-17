@@ -53,7 +53,6 @@ app.use((req, res, next) => {
 
 app.get("/", (req, res) => {
   const user = req.user;
-  console.log(user)
   if (user) {
     const templateVars = {
       urls: urlsForUser(user.id, urlDatabase),
@@ -92,7 +91,7 @@ app.post("/urls", (req, res) => {
 });
 
 // === UPDATE /urls/:shorturl ===
-app.put("/urls/:id", (req, res) => {
+app.post("/urls/:id", (req, res) => {
   const user = req.user;
   const url = req.params.id;
   const longURL = req.body.longURL;
@@ -122,7 +121,7 @@ app.put("/urls/:id", (req, res) => {
 });
 
 // === DELETE /urls/shorturl ===
-app.delete("/urls/:id", (req, res) => {
+app.post("/urls/:id/delete", (req, res) => {
   const user = req.user;
   if (user) {
     if (urlDatabase[req.params.id]) {
@@ -170,7 +169,7 @@ app.get("/urls/:id", (req, res) => {
   if (user) {
     if (!isValidUrl(url, urlDatabase)) {
       res.status(404).send('Invalid URL.');
-    } else if (isUserUrl(url, user, urlDatabase)) {
+    } else if (!isUserUrl(url, user, urlDatabase)) {
       res.sendStatus(401);
     } else {
       const templateVars = {

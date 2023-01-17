@@ -78,7 +78,7 @@ const isValidUrl = (id, urlDatabase) => {
 * @returns {boolean} true if the url's user id is user.id. false otherwise
 */
 const isUserUrl = (shortUrl, user, urlDatabase) => {
-  if (isValidUrl(shortUrl, urlDatabase) && urlDatabase[shortUrl].userId === user.id) {
+  if (isValidUrl(shortUrl, urlDatabase) && urlDatabase[shortUrl].userID === user.id) {
     return true;
   }
   return false;
